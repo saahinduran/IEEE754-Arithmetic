@@ -10,7 +10,7 @@
 float_div:
 	push     {r7}
 	mov r7,0
-	mov r8,0
+	//mov r8,0
 	mov r9,#25   // iteration number = 23 bit fraction, 1 bit hidden 1, 1 bit extra for rounding
 	/* Extract the first argument's mantissa */
 	ubfx r3,r0,#0,#23
@@ -45,9 +45,9 @@ calculate_mantissa:     // this is the part where fixed point division happens
 
 
 	lsl r7,#1				// shift the result register to the left in any condition
-	add r8,#1				// increment counter
-	cmp r8,r9				// check if we iterated 23 times
-	blt calculate_mantissa		// if not, continue dividing
+	subs r9,#1				// increment counter
+	//cmp r8,r9				// check if we iterated 23 times
+	bne calculate_mantissa		// if not, continue dividing
 							// if so, continue to construct the number
 
 __rounding:
