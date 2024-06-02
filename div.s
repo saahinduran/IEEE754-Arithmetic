@@ -19,7 +19,7 @@ float_div:
 	/* Extract the second argument's mantissa */
 	ubfx r4,r1,#0,#23
 	orr r4,0x800000
-
+// trial
 
 
 	ubfx r5,r0,#23,#8  		// extract the exponent
