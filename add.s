@@ -87,11 +87,18 @@ align_first:
 	b add_mantissas
 
 check_last_bit:
+	tst r3,#0x2
+	IT eq
+	lsreq r3,r2
+	beq	add_mantissas
 	tst r3,#0x1
+	IT eq
+	lsreq r3,r2
+	beq	add_mantissas
+
 	lsr r3,r2			// shift the mantissa, mantissa is aligned now
 	IT ne
 	addne r3, #1
-	beq add_mantissas
 
 add_mantissa_without_rounding:
 	mov r2,r1       // restore resultant exponent

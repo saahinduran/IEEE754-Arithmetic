@@ -11,6 +11,13 @@ float_mul:
 
 	push     {r7}
 	mov r7,0
+
+	cmp r0,r7
+	beq __exit_zero
+
+	cmp r1,r7
+	beq __exit_zero
+
 	/* Extract the first argument's mantissa */
 	ubfx r3,r0,#0,#23
 	orr r3,0x800000
@@ -80,5 +87,10 @@ __exit_mul:
 	orrmi r0,#0x80000000	// put sign
 
 	orr r0,r7
+	pop {r7}
+	bx lr
+
+__exit_zero:
+	mov r0,#0
 	pop {r7}
 	bx lr
