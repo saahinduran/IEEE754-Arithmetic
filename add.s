@@ -7,8 +7,32 @@
 .type       float_add, %function
 
 float_add:
+	mov r11,0
+	tst r0,0x80000000		// check if first argument is negative
+	beq 1f
+	ITTTT ne
+	eorne r0,0x80000000
+	movne r2,r0
+	movne r0,r1
+	movne r1,r2				// if so, swap first and second argument and make second negv
+	tst r0, 0x80000000
+	beq float_sub
+	mov r11,0x80000000
+	b	2f
+1:
+	tst r1, 0x80000000
+	IT ne
+	eorne r1,0x80000000
+	bne	float_sub
+
+2:
     push     {r7}
     mov r7,0
+
+    cmp r0,r7 // if first number is zero
+	beq exit_zero1
+	cmp r1,r7 // if second number is zero
+	beq exit_zero2
 
     /* Extract the first argument's mantissa */
     ubfx r3,r0,#0,#23
@@ -38,75 +62,96 @@ align_first:
 
 	mov r0,#24
 	cmp r2,r0
-	mov r0,r1 		// put r0 to resultant exponent to carry to sticky_exit subroutine
 
-	blt sticky_exit
+	bgt exit_noop // small number is lost
 
-    mov r0, #0   		// first exponent is now scratch
-    mov r5,#0x800000 	//generate mask for sticky bit check
-    sub r5,#1
-    ands r5,r3,r5
+    mov r0, #1   		// first exponent is now scratch
+    cmp r2, r0
+    beq check_last_bit
+    lsl r0, r2			//generate mask for sticky bit check
+    sub r0,#1
+    ands r5,r3,r0
 
+	mov r0, #1
+	sub r2, #1
+	lsl r0, r2
+	add r2, #1
 
 	lsr r3,r2			// shift the mantissa, mantissa is aligned now
-    add r3,r4			// add mantissas, r3 is the resultant mantissa
-	mov r2,r1			// r2 is the resultant exponent
 
-    beq exit_add     // sticky bit failed
-    add r3,#0x1			// sticky bit continues
+	cmp r5,r0
+	IT gt
 
+	addgt r3, #1
+	bgt add_mantissa_without_rounding
+	b add_mantissas
 
-    b exit_add
-
-align_second:
-    mov r6,r5
-    mov r5,r3
-    mov r3,r4
-    neg r7,r7
-
-    mov r1,#0x800000 //generate mask for stick bit check
-    sub r1,#1
-    ands r4,r4,r1
-
-
-    lsr r1,r4,r7
-    beq sticky_exit             // sticky bit failed
-
-    cmp r2,r10
-    IT ge                   // if sticky bit will remain ? i.e. is shift > 24?
-    addge r5,#0x1
-
-sticky_exit:
-
-    sub r2, #0x1     // round bit control
-    lsr r5,r3,r2
-    ands r5, #0x1
-    add r2, #0x1
-
-	lsr r3,r2
+check_last_bit:
+	tst r3,#0x1
+	lsr r3,r2			// shift the mantissa, mantissa is aligned now
 	IT ne
-    addne r3,#0x1   // round bit occured
+	addne r3, #1
+	beq add_mantissas
 
+add_mantissa_without_rounding:
+	mov r2,r1       // restore resultant exponent
+    add r3,r4       // add mantissas
+
+    tst r3,#0x1000000   // check if overflow occured
+    beq no_overflow
+	lsr r3, #1        // overflow occured
+	add r2, #1
+	b exit_add
 
 add_mantissas:
 
-	mov r2,r0       // restore resultant exponent
+	mov r2,r1       // restore resultant exponent
     add r3,r4       // add mantissas
-    mov r5,#0x1000000   // generate mask for overflow
-    ands r0,r3,r5
 
-    ITT ne				// check if overflow
-    lsrne r3, #1        // overflow occured
-	addne r2, #1
+    tst r3,#0x1000000   // check if overflow occured
+    beq no_overflow
+
+	ubfx r0,r3,#0,#2
+
+	mov r1, #2
+	cmp r0, r1
+    IT gt
+    addgt r3,#0x1
+
+    lsr r3, #1        // overflow occured
+	add r2, #1
 
 
+no_overflow:
 
 
 exit_add:  // r2 holds the resultant exponent, r3 holds resultant mantissa
 	bfc r3,#23,#1
+exit_noop:
 	lsl r0, r2, #23 // put resultant exponent
 
     orr r0, r3 // put resultant mantissa
-
+	orr r0, r11 // put sign
     pop     {r7}
     bx lr
+
+exit_zero1:
+	cmp r1, r7 // if second number is zero as well
+	bne 1f
+	mov r0,0
+	pop {r7}
+	bx lr
+1:
+	mov r0,r1
+	pop {r7}
+	bx lr
+
+exit_zero2:
+	cmp r0, r7 // if first number is zero as well
+	bne 1f
+	mov r0,0
+	pop {r7}
+	bx lr
+1:
+	pop {r7}
+	bx lr

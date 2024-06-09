@@ -7,11 +7,25 @@
 .type       float_sub, %function
 
 float_sub:
-
-	tst r1,0x80000000
+	mov r11,0
+	tst r1,0x80000000		// check if second argument is negative
+	beq 1f
+	ITTT ne
+	movne r2,r0
+	movne r0,r1
+	movne r1,r2				// if so, swap first and second argument and make second negv
+	tst r0, 0x80000000
+	ITTT ne
+	eorne r0,0x80000000
+	eorne r1,0x80000000
+	bne 2f
+1:
+	tst r0, 0x80000000
 	IT ne
 	eorne r1,0x80000000
-	bne	float_add
+	bne	 float_add
+2:
+
 
 
     push     {r7}
